@@ -1,19 +1,31 @@
 = floozy
 
-Description goes here.
+Floozy is an option parser that does nothing original.  Instead, it merely
+tries to bring together the best of Trollop, Micro-Optparse, Commander and
+Optitron.
 
-== Contributing to floozy
- 
-* Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet.
-* Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it.
-* Fork the project.
-* Start a feature/bugfix branch.
-* Commit and push until you are happy with your contribution.
-* Make sure to add tests for it. This is important so I don't break it in a future version unintentionally.
-* Please try not to mess with the Rakefile, version, or history. If you want to have your own version, or is otherwise necessary, that is fine, but please isolate to its own commit so I can cherry-pick around it.
+It features:
 
-== Copyright
+* highly concise syntax, one line per option
+* ability to set defaults (piecemeal or all at once)
+* code that resides entirely in one file
+* fits the help message to the terminal width, even on windows
+* elegant subcommand system
+* can cast and validate arguments, not just options
 
-Copyright (c) 2012 John Prince. See LICENSE.txt for
-further details.
+Right now it's just {"i want that"}(http://gifsoup.com/webroot/animatedgifs2/1649494_o.gif)-ware
+
+== Example
+
+=== Single command:
+
+    require 'floozy'
+
+    Floozy.new do |p|
+      p.opt  
+    end
+
+== License
+
+MIT.  See LICENSE.txt for further details.
 
