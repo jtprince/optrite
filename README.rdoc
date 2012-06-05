@@ -13,7 +13,7 @@ It features:
 * elegant subcommand system
 * can cast and validate arguments, not just options
 
-Right now it's just {"i want that"}[http://gifsoup.com/webroot/animatedgifs2/1649494_o.gif]-ware
+Right now it's just "I want that" [http://profile.ak.fbcdn.net/hprofile-ak-ash2/27517_107379745954265_1128_n.jpg]-ware
 
 == Example
 

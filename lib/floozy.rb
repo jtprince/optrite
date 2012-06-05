@@ -3,37 +3,41 @@
 
 class Floozy
 
- attr_accessor :banner, :version
-  def initialize
+  Option = Struct.new(:name, :desc, :settings) 
+
+  attr_accessor :banner, :version
+  # a hash of symbol => value that can be used to fill the defaults 
+  attr_accessor :defaults
+  def initialize(&block)
     @options = []
     @used_short = []
+    @defaults = {}
     @default_values = nil
-    yield self if block_given?
+    block.call(self) if block
   end
 
   def option(name, desc, settings = {})
-    @options << [name, desc, settings]
+    @options << Option.new(name, desc, settings)
   end
   alias_method :opt, :option
 
   def short_from(name)
-    name.to_s.chars.each do |char|
-      next if @used_short.include?(char) || char == "_"
-      return char # returns from short_from method
+    name.to_s.each_char.find do |char|
+      !@used_short.include?(char) || char != '_'
     end
   end
 
   def validate(options)
     options.each_pair do |key, value|
-      opt = @options.find_all{ |option| option[0] == key }.first
+      opt = @options.find_all{ |option| option.name == key }.first
       key = "--" << key.to_s.gsub("_", "-")
-      unless opt[2][:value_in_set].nil? || opt[2][:value_in_set].include?(value)
-        puts "Parameter for #{key} must be in [" << opt[2][:value_in_set].join(", ") << "]" ; exit(1)
+      unless opt.settings[:value_in_set].nil? || opt.settings[:value_in_set].include?(value)
+        puts "Parameter for #{key} must be in [" << opt.settings[value_in_set].join(", ") << "]" ; exit(1)
       end
-      unless opt[2][:value_matches].nil? || opt[2][:value_matches] =~ value
-        puts "Parameter for #{key} must match /" << opt[2][:value_matches].source << "/" ; exit(1)
+      unless opt.settings[:value_matches].nil? || opt.settings[:value_matches] =~ value
+        puts "Parameter for #{key} must match /" << opt.settings[:value_matches].source << "/" ; exit(1)
       end
-      unless opt[2][:value_satisfies].nil? || opt[2][:value_satisfies].call(value)
+      unless opt.settings[:value_satisfies].nil? || opt.settings[:value_satisfies].call(value)
         puts "Parameter for #{key} must satisfy given conditions (see description)" ; exit(1)
       end
     end
@@ -41,23 +45,25 @@ class Floozy
 
   def process!(args = ARGV)
     @result = (@default_values || {}).clone # reset or new
-    @optionparser ||= OptionParser.new do |p| # prepare only once
+    @optionparser ||= OptionParser.new do |op| # prepare only once
       @options.each do |option|
-        @used_short << short = option[2][:short] || short_from(option[0])
-        @result[option[0]] = option[2][:default] || false # set default
-        klass = option[2][:default].class == Fixnum ? Integer : option[2][:default].class
+        short = (option.settings[:short] || short_from(option.name))
+        @used_short << short
+        default = option.settings[:default] || @defaults[option.name] || false # set default
+        @result[option.name] = default         
+        klass = ( Fixnum===default ? Integer : default.class )
 
         if [TrueClass, FalseClass, NilClass].include?(klass) # boolean switch
-          p.on("-" << short, "--[no-]" << option[0].to_s.gsub("_", "-"), option[1]) {|x| @result[option[0]] = x}
+          op.on("-" << short, "--[no-]" << option.name.to_s.gsub("_", "-"), option.desc) {|v| @result[option.name] = v}
         else # argument with parameter
-          p.on("-" << short, "--" << option[0].to_s.gsub("_", "-") << " " << option[2][:default].to_s, klass, option[1]) {|x| @result[option[0]] = x}
+          op.on("-" << short, "--" << option.name.to_s.gsub("_", "-") << " " << default.to_s, klass, option.desc) {|x| @result[option.name] = x}
         end
       end
 
-      p.banner = @banner unless @banner.nil?
-      p.on_tail("-h", "--help", "Show this message") {puts p ; exit}
+      op.banner = @banner unless @banner.nil?
+      op.on_tail("-h", "--help", "Show this message") {puts op ; exit}
       short = @used_short.include?("v") ? "-V" : "-v"
-      p.on_tail(short, "--version", "Print version") {puts @version ; exit} unless @version.nil?
+      op.on_tail(short, "--version", "Print version") {puts @version ; exit} unless @version.nil?
       @default_values = @result.clone # save default values to reset @result in subsequent calls
     end
 
@@ -66,7 +72,7 @@ class Floozy
     rescue OptionParser::ParseError => e
       puts e.message ; exit(1)
     end
-    
+
     validate(@result) if self.respond_to?("validate")
     @result
   end
