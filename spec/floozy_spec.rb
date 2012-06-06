@@ -20,16 +20,22 @@ describe Floozy do
         p.opt :chance, "set mutation chance", :type => :float, :value_satisfies => lambda {|x| x >= 0.0 && x <= 1.0}
       end
 
-      options = parser.parse!  # returns a hash
+      # This section goes with the README but is specific for diff output
+=begin
+      options = parser.parse!    # returns a hash
 
       if ARGV.size == 0
         puts parser
         exit
       end
+=end
+
+      parser.parse! []
+
+      puts parser
     end
 
 
-    end
     it 'acts like micro-optparse' do
       fl = Floozy.new do |p|
         p.banner = "This is a fancy script, for usage see below"
@@ -86,10 +92,10 @@ describe Floozy do
       fl.process! []  # <-- I shouldn't have to process things to look at the complete help message!
       fl.to_s.should =~ /^usage: rspec\n/
 
-      fl = Floozy.new do |p|
+        fl = Floozy.new do |p|
         p.usage "[OPTIONS] <file1> <file2>"
         p.opt :wildness
-      end
+        end
       fl.process!([])
       fl.to_s.should =~ /^usage: rspec \[OPTIONS\] <file1> <file2>/
     end
@@ -111,8 +117,8 @@ describe Floozy do
       options = fl.process!([])
       options.should == {:severity=>4, :verbose=>nil, :plus_selection=>true, :selection=>"BestSelection"}
       fl.to_s.should =~ /This is a fancy/
-      fl.to_s.should =~ /WEIRD OPTIONS: /
-      fl.to_s.should =~ /EVEN STRANGER OPTIONS:/
+        fl.to_s.should =~ /WEIRD OPTIONS: /
+        fl.to_s.should =~ /EVEN STRANGER OPTIONS:/
     end
 
     it 'can cast and validate arguments' do
