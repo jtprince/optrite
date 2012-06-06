@@ -11,7 +11,7 @@ class Floozy
 
   Option = Struct.new(:name, :desc, :settings)
 
-  attr_writer :banner, :version
+  attr_writer :version
   # a hash of symbol => value that can be used to fill the defaults 
   attr_writer :defaults
   # the underlying OptionParser object
@@ -24,14 +24,18 @@ class Floozy
   # sets the banner attribute with a usage line using the script name
   # File.basename($0).  Returns the current banner attribute
   def usage(args_and_such=nil)
-    @banner = "usage: #{File.basename($0)}"
-    (@banner << ' ' << args_and_such) if args_and_such
-    @banner
+    _banner = "usage: #{File.basename($0)}"
+    (_banner << ' ' << args_and_such) if args_and_such
+    banner = _banner
+  end
+
+  def banner=(arg)
+    @option_parser.banner = arg
   end
 
   # allows getting or setting based on whether an argument was provided
   def banner(arg=nil)
-    arg.nil? ? @banner : (@banner = arg)
+    arg.nil? ? @option_parser.banner : (@option_parser.banner = arg)
   end
 
   # allows getting or setting based on whether an argument was provided
@@ -45,6 +49,7 @@ class Floozy
   end
 
   def initialize(only_validate_given=true, &block)
+    @given = Set.new  # symbols of arguments given
     @only_validate_given = only_validate_given
     @opts_etc = []
     @used_short = []
@@ -60,12 +65,29 @@ class Floozy
   end
 
   def option(name, desc="", settings = {})
-    @opts_etc << Floozy::Option.new(name, desc, settings)
+    op = Floozy::Option.new(name, desc, settings)
+    short = (op.settings[:short] || short_from(op.name))
+    @used_short << short
+    default = op.settings[:default] || @defaults[op.name] || DEFAULT_BLANK # set default
+    @result[op.name] = default         
+    klass = 
+      if op.settings[:type]
+        type_to_class(op.settings[:type]) 
+      else
+        Fixnum.===(default) ? Integer : default.class
+      end
+
+    on_opt = lambda {|v| @given.add(op.name) && @result[op.name] = v }
+    if [TrueClass, FalseClass, NilClass].include?(klass) # boolean switch
+      op.on("-" << short, name_to_longopt(op.name, true), op.desc, &on_opt)
+    else # argument with parameter
+      op.on("-" << short, name_to_longopt(op.name) << " " << default.to_s, klass, op.desc, &on_opt)
+    end
   end
   alias_method :opt, :option
 
   def text(arg="")
-    @opts_etc << arg
+    op.separator(arg)
   end
   alias_method :separator, :text
 
@@ -119,33 +141,8 @@ class Floozy
   alias_method :help, :to_s
 
   def parse!(args = ARGV)
-    @given = Set.new  # symbols of arguments given
     @result = (@default_values || {}).clone # reset or new
     op = @option_parser
-    @opts_etc.each do |thing|
-      if thing.is_a?(String)
-        op.separator(thing) 
-      else
-        option = thing
-        short = (option.settings[:short] || short_from(option.name))
-        @used_short << short
-        default = option.settings[:default] || @defaults[option.name] || DEFAULT_BLANK # set default
-        @result[option.name] = default         
-        klass = 
-          if option.settings[:type]
-            type_to_class(option.settings[:type]) 
-          else
-            Fixnum.===(default) ? Integer : default.class
-          end
-
-        on_opt = lambda {|v| @given.add(option.name) && @result[option.name] = v }
-        if [TrueClass, FalseClass, NilClass].include?(klass) # boolean switch
-          op.on("-" << short, name_to_longopt(option.name, true), option.desc, &on_opt)
-        else # argument with parameter
-          op.on("-" << short, name_to_longopt(option.name) << " " << default.to_s, klass, option.desc, &on_opt)
-        end
-      end
-    end
 
     op.banner = @banner unless @banner.nil?
     op.on_tail("-h", "--help", "Show this message") {puts op ; exit}
