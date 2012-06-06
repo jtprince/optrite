@@ -50,11 +50,11 @@ class Floozy
 
   # returns only the options out of the opts_etc things
   def options
-    @opts_etc.select {|obj| obj.is_a?(Option) }
+    @opts_etc.select {|obj| obj.is_a?(Floozy::Option) }
   end
 
   def option(name, desc="", settings = {})
-    @opts_etc << Option.new(name, desc, settings)
+    @opts_etc << Floozy::Option.new(name, desc, settings)
   end
   alias_method :opt, :option
 
