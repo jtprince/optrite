@@ -53,6 +53,19 @@ Which produces this hash of options:
 
 And this help message with --help or no arguments:
 
+    usage: rspec file1 ...
+    output: file1.baconated
+
+    options:
+        -v, --[no-]verbose               enable verbose output
+        -s, --severity 4                 set severity
+        -m, --mutation MightyMutation    set mutation
+        -p, --[no-]plus-selection        use plus-selection if set
+        -l, --selection BestSelection    selection used
+        -c, --chance                     set mutation chance
+        -h, --help                       Show this message
+        -V, --version                    Print version
+
 == Features
 
 === highly concise syntax

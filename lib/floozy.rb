@@ -16,6 +16,8 @@ class Floozy
   attr_writer :defaults
   # the underlying OptionParser object
   attr_accessor :option_parser
+  # each of the Floozy::Options given
+  attr_accessor :options
 
   # will only validate arguments the user provided, which avoids problems
   # dealing with arguments without a default or invalid defaults.
@@ -26,7 +28,7 @@ class Floozy
   def usage(args_and_such=nil)
     _banner = "usage: #{File.basename($0)}"
     (_banner << ' ' << args_and_such) if args_and_such
-    banner = _banner
+    @option_parser.banner = _banner
   end
 
   def banner=(arg)
@@ -38,7 +40,9 @@ class Floozy
     arg.nil? ? @option_parser.banner : (@option_parser.banner = arg)
   end
 
-  # allows getting or setting based on whether an argument was provided
+  # allows getting or setting based on whether an argument was provided.  This
+  # should be done *before* calls to *option* or it will wipe out individually
+  # set options.
   def defaults(arg=nil)
     arg.nil? ? @defaults : (@defaults = arg)
   end
@@ -49,45 +53,50 @@ class Floozy
   end
 
   def initialize(only_validate_given=true, &block)
+    @options = []
+    @result = {}
     @given = Set.new  # symbols of arguments given
     @only_validate_given = only_validate_given
-    @opts_etc = []
     @used_short = []
     @defaults = {}
-    @default_values = nil
     @option_parser = OptionParser.new
     block.call(self) if block
   end
 
-  # returns only the options out of the opts_etc things
-  def options
-    @opts_etc.select {|obj| obj.is_a?(Floozy::Option) }
-  end
-
+  # returns self
   def option(name, desc="", settings = {})
-    op = Floozy::Option.new(name, desc, settings)
-    short = (op.settings[:short] || short_from(op.name))
+    fopt = Floozy::Option.new(name, desc, settings)
+    @options << fopt
+    short = (fopt.settings[:short] || short_from(fopt.name))
     @used_short << short
-    default = op.settings[:default] || @defaults[op.name] || DEFAULT_BLANK # set default
-    @result[op.name] = default         
+    default = 
+      if fopt.settings.key?(:default)
+        fopt.settings[:default]
+      elsif @defaults.key?(fopt.name)
+        @defaults[fopt.name]
+      else
+        DEFAULT_BLANK
+      end
+    @defaults[fopt.name] = default
     klass = 
-      if op.settings[:type]
-        type_to_class(op.settings[:type]) 
+      if fopt.settings[:type]
+        type_to_class(fopt.settings[:type]) 
       else
         Fixnum.===(default) ? Integer : default.class
       end
 
-    on_opt = lambda {|v| @given.add(op.name) && @result[op.name] = v }
+    on_opt = lambda {|v| @given.add(fopt.name) && @result[fopt.name] = v }
     if [TrueClass, FalseClass, NilClass].include?(klass) # boolean switch
-      op.on("-" << short, name_to_longopt(op.name, true), op.desc, &on_opt)
+      @option_parser.on("-" << short, name_to_longopt(fopt.name, true), fopt.desc, &on_opt)
     else # argument with parameter
-      op.on("-" << short, name_to_longopt(op.name) << " " << default.to_s, klass, op.desc, &on_opt)
+      @option_parser.on("-" << short, name_to_longopt(fopt.name) << " " << default.to_s, klass, fopt.desc, &on_opt)
     end
+    self
   end
   alias_method :opt, :option
 
   def text(arg="")
-    op.separator(arg)
+    @option_parser.separator(arg)
   end
   alias_method :separator, :text
 
@@ -120,7 +129,7 @@ class Floozy
   # recognizes :value_in_set, :value_matches, and :value_satisfies
   def validate(option_value_pairs)
     option_value_pairs.each do |key, value|
-      opt = options.find{|option| option.name == key }
+      opt = @options.find{|option| option.name == key }
       key = name_to_longopt(key)
       unless opt.settings[:value_in_set].nil? || opt.settings[:value_in_set].include?(value)
         puts "Parameter for #{key} must be in [" << opt.settings[value_in_set].join(", ") << "]" ; exit(1)
@@ -141,14 +150,14 @@ class Floozy
   alias_method :help, :to_s
 
   def parse!(args = ARGV)
-    @result = (@default_values || {}).clone # reset or new
+    @result = @defaults.clone
+    @result.delete_if {|key,value| @options.none? {|fopt| fopt.name == key } }
     op = @option_parser
 
     op.banner = @banner unless @banner.nil?
     op.on_tail("-h", "--help", "Show this message") {puts op ; exit}
     short = @used_short.include?("v") ? "-V" : "-v"
     op.on_tail(short, "--version", "Print version") {puts @version ; exit} unless @version.nil?
-    @default_values = @result.clone # save default values to reset @result in subsequent calls
 
     begin
       @option_parser.parse!(args)

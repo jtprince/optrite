@@ -32,7 +32,7 @@ describe Floozy do
 
       parser.parse! []
 
-      puts parser
+      parser.to_s.size.should be >= 30
     end
 
 
