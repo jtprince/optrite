@@ -11,7 +11,8 @@ Current features with inspiration in parentheses:
 * code that resides entirely in one file (tr)
 * very few total lines of code (mop) but emphasizing clarity and completeness over compactness
 * can add arbitrary text (aka separators) in order to group options (tr)
-* can auto-generate a usage line with the scriptname (?)
+* can auto-generate a usage line with the scriptname
+* convenient aliases
 * strong, rich validation capabilities (mop)
 
 Planned:
@@ -19,7 +20,7 @@ Planned:
 * fits the help message to the terminal width (tr) [even on windows machines]
 * can cast and validate arguments, not just options (cm)
 
-Right now it's just "I want that" [http://profile.ak.fbcdn.net/hprofile-ak-ash2/27517_107379745954265_1128_n.jpg]-ware
+Right now it's just {"I want that"}[http://profile.ak.fbcdn.net/hprofile-ak-ash2/27517_107379745954265_1128_n.jpg]-ware
 
 == Example
 
@@ -27,9 +28,90 @@ Right now it's just "I want that" [http://profile.ak.fbcdn.net/hprofile-ak-ash2/
 
     require 'floozy'
 
-    Floozy.new do |p|
-      p.opt  
+    parser = Floozy.new do |p|
+      p.version "fancy script 0.0 alpha" # sets up --version && exit option
+      p.usage "file1 ..."
+      p.text "output: file1.baconated"
+      p.text
+      p.text "options:"
+      p.opt :verbose, "enable verbose output"
+      p.opt :severity, "set severity", :type => :int, :value_in_set => [4,5,6,7,8]
+      p.opt :mutation, "set mutation", :default => "MightyMutation", :value_matches => /Mutation/
+      p.opt :plus_selection, "use plus-selection if set", :default => true
+      p.opt :selection, "selection used", :default => "BestSelection", :short => "l"
+      p.opt :chance, "set mutation chance", :type => :float, :value_satisfies => lambda {|x| x >= 0.0 && x <= 1.0}
     end
+
+    options = parser.parse!  # a hash
+    
+    if ARGV.size == 0
+      puts parser
+      exit
+    end
+
+Which produces this hash of options:
+
+And this help message with --help or no arguments:
+
+== Features
+
+=== highly concise syntax
+
+All the following are acceptable to set up a flag:
+
+    p.opt :verbose
+    p.opt :verbose, "be loud about it"
+    p.opt :verbose, "be loud about it", :default => true
+
+Note that banner, version, and defaults are attributes, but for consistency
+with the opt calls (and trollop) they can be set without the equal sign:
+
+    p.banner = "an awesome script"
+    p.banner "an awesome script"    # does the same thing
+    p.banner                        # -> returns the current banner
+
+=== ability to set defaults all at once
+
+Sometimes you would like to hand in defaults all at once (e.g., they are in
+some class constant hash):
+
+    p.defaults intopt: 32, floatopt: 11.0, stringopt: "yep"
+    p.opt :intopt, "the first integer option"
+    ...
+
+This will act exactly as if you had specified those values on each line.
+    
+=== banner and usage line
+
+All my scripts begin with a usage line derived from the basename of the file
+being called.  This can be accomplished easily:
+
+    p.usage   # if there are no arguments
+    p.usage "[OPTIONS] <file1> <file2>"
+
+Alternatively, the banner may be specified in full like with optparse and
+shown a few sections above.
+
+=== Convenient aliases
+
+    banner=   <-> banner(arg)
+    defaults= <-> defaults(arg)
+    version=  <-> version(arg)
+    parse!    <-> process!
+    to_s      <-> help    <-> educate
+
+If you are specifying types (i.e., not using defaults), you can use classes
+like with Optparse or symbols/strings like with Trollop:
+
+    String  <-> :string
+    Float   <-> :float
+    Integer <-> :int <-> :integer
+    TrueClass <-> :bool <-> :boolean
+
+== Acknowlegments
+
+Thanks to the authors of trollop, micro-optparse, and commander for writing
+excellent option parsers.
 
 == License
 

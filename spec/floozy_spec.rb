@@ -2,6 +2,34 @@ require 'spec_helper'
 
 describe Floozy do
   describe 'simple cases' do
+    it 'runs the rdoc example' do
+
+      require 'floozy'
+
+      parser = Floozy.new do |p|
+        p.version "fancy script 0.0 alpha" # sets up --version && exit option
+        p.usage "file1 ..."
+        p.text "output: file1.baconated"
+        p.text
+        p.text "options:"
+        p.opt :verbose, "enable verbose output"
+        p.opt :severity, "set severity", :default => 4, :value_in_set => [4,5,6,7,8]
+        p.opt :mutation, "set mutation", :default => "MightyMutation", :value_matches => /Mutation/
+          p.opt :plus_selection, "use plus-selection if set", :default => true
+        p.opt :selection, "selection used", :default => "BestSelection", :short => "l"
+        p.opt :chance, "set mutation chance", :type => :float, :value_satisfies => lambda {|x| x >= 0.0 && x <= 1.0}
+      end
+
+      options = parser.parse!  # returns a hash
+
+      if ARGV.size == 0
+        puts parser
+        exit
+      end
+    end
+
+
+    end
     it 'acts like micro-optparse' do
       fl = Floozy.new do |p|
         p.banner = "This is a fancy script, for usage see below"

@@ -89,6 +89,7 @@ class Floozy
     end
   end
 
+  # recognizes :value_in_set, :value_matches, and :value_satisfies
   def validate(opt_hash)
     opt_hash.each_pair do |key, value|
       opt = options.find{|option| option.name == key }
@@ -111,7 +112,7 @@ class Floozy
   alias_method :educate, :to_s
   alias_method :help, :to_s
 
-  def process!(args = ARGV)
+  def parse!(args = ARGV)
     @result = (@default_values || {}).clone # reset or new
     op = @option_parser
     @opts_etc.each do |thing|
@@ -153,5 +154,6 @@ class Floozy
     validate(@result) if self.respond_to?(:validate)
     @result
   end
+  alias_method :process!, :parse!
 
 end
