@@ -1,5 +1,6 @@
 
 require 'optparse'
+require 'set'
 
 # copied *liberally* from micro-optparse.  See LICENSE.txt for more detailed.
 
@@ -15,6 +16,10 @@ class Floozy
   attr_writer :defaults
   # the underlying OptionParser object
   attr_accessor :option_parser
+
+  # will only validate arguments the user provided, which avoids problems
+  # dealing with arguments without a default or invalid defaults.
+  attr_accessor :only_validate_given
 
   # sets the banner attribute with a usage line using the script name
   # File.basename($0).  Returns the current banner attribute
@@ -39,7 +44,8 @@ class Floozy
     arg.nil? ? @version : (@version = arg)
   end
 
-  def initialize(&block)
+  def initialize(only_validate_given=true, &block)
+    @only_validate_given = only_validate_given
     @opts_etc = []
     @used_short = []
     @defaults = {}
@@ -90,8 +96,8 @@ class Floozy
   end
 
   # recognizes :value_in_set, :value_matches, and :value_satisfies
-  def validate(opt_hash)
-    opt_hash.each_pair do |key, value|
+  def validate(option_value_pairs)
+    option_value_pairs.each do |key, value|
       opt = options.find{|option| option.name == key }
       key = name_to_longopt(key)
       unless opt.settings[:value_in_set].nil? || opt.settings[:value_in_set].include?(value)
@@ -113,6 +119,7 @@ class Floozy
   alias_method :help, :to_s
 
   def parse!(args = ARGV)
+    @given = Set.new  # symbols of arguments given
     @result = (@default_values || {}).clone # reset or new
     op = @option_parser
     @opts_etc.each do |thing|
@@ -131,10 +138,11 @@ class Floozy
             Fixnum.===(default) ? Integer : default.class
           end
 
+        on_opt = lambda {|v| @given.add(option.name) && @result[option.name] = v }
         if [TrueClass, FalseClass, NilClass].include?(klass) # boolean switch
-          op.on("-" << short, name_to_longopt(option.name, true), option.desc) {|v| @result[option.name] = v}
+          op.on("-" << short, name_to_longopt(option.name, true), option.desc, &on_opt)
         else # argument with parameter
-          op.on("-" << short, name_to_longopt(option.name) << " " << default.to_s, klass, option.desc) {|x| @result[option.name] = x}
+          op.on("-" << short, name_to_longopt(option.name) << " " << default.to_s, klass, option.desc, &on_opt)
         end
       end
     end
@@ -151,7 +159,8 @@ class Floozy
       puts e.message ; exit(1)
     end
 
-    validate(@result) if self.respond_to?(:validate)
+    given_pairs = @result.select {|k,v| @given.include?(k) }
+    validate(given_pairs) if self.respond_to?(:validate)
     @result
   end
   alias_method :process!, :parse!
