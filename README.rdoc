@@ -1,17 +1,23 @@
 = floozy
 
-Floozy is an option parser that does nothing original.  Instead, it merely
-tries to bring together the best of Trollop, Micro-Optparse, Commander and
-Optitron.
+Floozy is an option parser that combines the best of several great option
+parsers, trollop, micro-optparse, and commander.
 
-It features:
+Current features with inspiration in parentheses:
+(Abbreviations: micro-optparse -> mop, trollop -> tr, commander -> cm)
 
-* highly concise syntax, one line per option
-* ability to set defaults (piecemeal or all at once)
-* code that resides entirely in one file
-* fits the help message to the terminal width, even on windows
-* elegant subcommand system
-* can cast and validate arguments, not just options
+* highly concise syntax, one line per option (mop, tr, cm)
+* ability to set defaults either piecemeal (mop) or all at once (cm)
+* code that resides entirely in one file (tr)
+* very few total lines of code (mop) but emphasizing clarity and completeness over compactness
+* can add arbitrary text (aka separators) in order to group options (tr)
+* can auto-generate a usage line with the scriptname (?)
+* strong, rich validation capabilities (mop)
+
+Planned:
+* elegant subcommand system (cm)
+* fits the help message to the terminal width (tr) [even on windows machines]
+* can cast and validate arguments, not just options (cm)
 
 Right now it's just "I want that" [http://profile.ak.fbcdn.net/hprofile-ak-ash2/27517_107379745954265_1128_n.jpg]-ware
 
