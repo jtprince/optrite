@@ -19,9 +19,16 @@ class Floozy
   # each of the Floozy::Options given
   attr_accessor :options
 
+  # the name of the command (or subcommand)
+  attr_accessor :name
+  attr_accessor :desc
+
   # will only validate arguments the user provided, which avoids problems
   # dealing with arguments without a default or invalid defaults.
   attr_accessor :only_validate_given
+
+  # an array of little option parsers
+  attr_accessor :commands
 
   # sets the banner attribute with a usage line using the script name
   # File.basename($0).  Returns the current banner attribute
@@ -29,6 +36,10 @@ class Floozy
     _banner = "usage: #{File.basename($0)}"
     (_banner << ' ' << args_and_such) if args_and_such
     @option_parser.banner = _banner
+  end
+
+  def command(name, desc, &block)
+    @commands << Floozy.new(name, desc, &block)
   end
 
   def banner=(arg)
@@ -52,15 +63,19 @@ class Floozy
     arg.nil? ? @version : (@version = arg)
   end
 
-  def initialize(only_validate_given=true, &block)
+  def initialize(name=$0, desc="", settings={:only_validate_given=>true}, &block)
+    @desc = desc
+    @name = name
+    @commands = []
     @options = []
     @result = {}
     @given = Set.new  # symbols of arguments given
-    @only_validate_given = only_validate_given
+    @only_validate_given = settings[:only_validate_given]
     @used_short = []
     @defaults = {}
     @option_parser = OptionParser.new
     block.call(self) if block
+    @dispatch_block = nil
   end
 
   # returns self
@@ -143,13 +158,36 @@ class Floozy
     end
   end
 
+  # yields args and options
+  def dispatch(&block)
+    @dispatch_block = block
+  end
+
   def to_s
-    @option_parser.to_s
+    st = @option_parser.to_s
+    if @commands.size > 0
+      st << "\ncommands: \n"
+      @commands.each do |command|
+        # need to space properly
+        st << "    #{command.name}   #{command.desc}\n"
+      end
+    end
+    st
   end
   alias_method :educate, :to_s
   alias_method :help, :to_s
 
-  def parse!(args = ARGV)
+  def process!(args = ARGV)
+    if @commands.size > 0
+      cmd_names_as_strings = @commands.map {|cmd| cmd.name.to_s }
+      index = args.index {|arg| cmd_names_as_strings.include?(arg) } || args.size
+      my_args = args[0...index]
+      cmd_args = args[(index+1)...args.size]
+      puts "MY ARGS / cmd args:"
+      p my_args
+      p cmd_args
+      command[index].parse!(cmd_args)
+    end
     @result = @defaults.clone
     @result.delete_if {|key,value| @options.none? {|fopt| fopt.name == key } }
     op = @option_parser
@@ -167,8 +205,14 @@ class Floozy
 
     given_pairs = @result.select {|k,v| @given.include?(k) }
     validate(given_pairs) if self.respond_to?(:validate)
-    @result
-  end
-  alias_method :process!, :parse!
 
+    # dispatch and return the result if given, otherwise
+    if @dispatch_block
+      # need to think about checking arity, etc. and handing
+      @dispatch_block.call(args, @result)
+    else
+      @result
+    end
+  end
+  #alias_method :process!, :parse!
 end

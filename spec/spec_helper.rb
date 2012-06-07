@@ -10,3 +10,14 @@ RSpec.configure do |config|
   config.tty = true
   config.formatter = :documentation  # :progress, :html, :textmate
 end
+
+class SomeClass
+  # merely returns args and options
+  def self.start(args, options={})
+    [args, options]
+  end
+  # merely returns options
+  def self.stop(options={})
+    options
+  end
+end

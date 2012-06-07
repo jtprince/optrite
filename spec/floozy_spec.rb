@@ -15,14 +15,14 @@ describe Floozy do
         p.opt :verbose, "enable verbose output"
         p.opt :severity, "set severity", :default => 4, :value_in_set => [4,5,6,7,8]
         p.opt :mutation, "set mutation", :default => "MightyMutation", :value_matches => /Mutation/
-          p.opt :plus_selection, "use plus-selection if set", :default => true
+        p.opt :plus_selection, "use plus-selection if set", :default => true
         p.opt :selection, "selection used", :default => "BestSelection", :short => "l"
         p.opt :chance, "set mutation chance", :type => :float, :value_satisfies => lambda {|x| x >= 0.0 && x <= 1.0}
       end
 
       # This section goes with the README but is specific for diff output
 =begin
-      options = parser.parse!    # returns a hash
+      options = parser.process!    # returns a hash
 
       if ARGV.size == 0
         puts parser
@@ -30,7 +30,7 @@ describe Floozy do
       end
 =end
 
-      parser.parse! []
+      parser.process! []
 
       parser.to_s.size.should be >= 30
     end
@@ -43,7 +43,7 @@ describe Floozy do
         p.opt :severity, "set severity", :default => 4, :value_in_set => [4,5,6,7,8]
         p.opt :verbose, "enable verbose output"
         p.opt :mutation, "set mutation", :default => "MightyMutation", :value_matches => /Mutation/
-          p.opt :plus_selection, "use plus-selection if set", :default => true
+        p.opt :plus_selection, "use plus-selection if set", :default => true
         p.opt :selection, "selection used", :default => "BestSelection", :short => "l"
         p.opt :chance, "set mutation chance", :default => 0.8, :value_satisfies => lambda {|x| x >= 0.0 && x <= 1.0}
       end
@@ -92,10 +92,10 @@ describe Floozy do
       fl.process! []  # <-- I shouldn't have to process things to look at the complete help message!
       fl.to_s.should =~ /^usage: rspec\n/
 
-        fl = Floozy.new do |p|
+      fl = Floozy.new do |p|
         p.usage "[OPTIONS] <file1> <file2>"
         p.opt :wildness
-        end
+      end
       fl.process!([])
       fl.to_s.should =~ /^usage: rspec \[OPTIONS\] <file1> <file2>/
     end
@@ -117,8 +117,8 @@ describe Floozy do
       options = fl.process!([])
       options.should == {:severity=>4, :verbose=>nil, :plus_selection=>true, :selection=>"BestSelection"}
       fl.to_s.should =~ /This is a fancy/
-        fl.to_s.should =~ /WEIRD OPTIONS: /
-        fl.to_s.should =~ /EVEN STRANGER OPTIONS:/
+      fl.to_s.should =~ /WEIRD OPTIONS: /
+      fl.to_s.should =~ /EVEN STRANGER OPTIONS:/
     end
 
     it 'can cast and validate arguments' do
@@ -126,7 +126,26 @@ describe Floozy do
     end
 
     it 'can do subcommands' do
-
+      fl = Floozy.new do |p|
+        p.usage "[OPTIONS] <COMMAND> [OPTIONS] args..."
+        p.opt :verbose, "say it, don't spray it"
+        p.command :start, "starts up the service" do |c|
+          c.opt :firepower, :default => 17
+          c.opt :url, :default => 'localhost'
+          c.dispatch do |args, options|
+            SomeClass.start args, options
+          end
+        end
+        p.command :stop, "give it a rest" do |c|
+          c.opt :force, "ensure it is off"
+          c.dispatch do |_, options|
+            SomeClass.stop options
+          end
+        end
+      end
+      puts fl.to_s
+      fl.process! ["start" "-v", "--firepower", "22"]
+      #fl.process! ["stop"]
     end
 
     it 'formats to fit terminal size, even on windows'
